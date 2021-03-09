@@ -326,14 +326,6 @@ to vagueia-zig-zag-gauleses ; turtle procedure
   let _rod_Patches (patches in-radius raio-visao with [ pcolor = red ])
   let _rod_TargetPatch (min-one-of _rod_Patches [distance myself]);; da o menor
 
-  ;;ifelse (any? _rod_Patches)
-    ;;[
-      ;;set _rod_TargetPatch (any? _rod_Patches) ;; Por agora escolho um dos patches qualquer para seguir
-      ;;set heading (_rod_TargetPatch)
-
-      ;;]
-    ;;[set heading heading + 5]
-
   ifelse((is-patch? _rod_TargetPatch))
     [face _rod_TargetPatch]
     [set heading (heading + (10 - (random 40))) ]

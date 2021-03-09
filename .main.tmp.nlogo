@@ -325,7 +325,7 @@ to vagueia-zig-zag-gauleses ; turtle procedure
   ;; Pesquisa na grande lista dos patches in radius uma que seja vermelha, any? usado porque in-radius da uma lista [1, 4, 6, ...], em vez de um unico valor
   let _rod_Patches (patches in-radius raio-visao with [ pcolor = red ])
   let _rod_TargetPatch (min-one-of _rod_Patches [distance myself]);; da o menor
-  let _
+
 
 
   ifelse((is-patch? _rod_TargetPatch))
