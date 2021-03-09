@@ -319,14 +319,20 @@ to vagueia-zig-zag-strumpfs ; turtle procedure
   rt random-float 60 - random-float 60
 end
 
-
-;; Vagueio ao acaso: avanco uma unidade e rodo aleatoriamente
-;;
+;; Comentarios longos para o Manel
+;; Tudo feito por Rodrigo Amaral, Colegio Moderno de 2004 a 2011 (do infatario ate 6 ano), Big brain, mas quem ee que usa netlogo para ensinar programacao????? onde esta python???, C++ with Arduino???, C## ????
 to vagueia-zig-zag-gauleses ; turtle procedure
-  avanca
-  set heading random 360
-end
+  ;; Pesquisa na grande lista dos patches in radius uma que seja vermelha, any? usado porque in-radius da uma lista [1, 4, 6, ...], em vez de um unico valor
+  let _rod_Patches (patches in-radius raio-visao with [ pcolor = red ])
+  let _rod_TargetPatch (min-one-of _rod_Patches [distance myself]);; da o menor
+  let _
 
+
+  ifelse((is-patch? _rod_TargetPatch))
+    [face _rod_TargetPatch]
+    [set heading (heading + (10 - (random 40))) ]
+  fd 1
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 389
@@ -479,7 +485,7 @@ CHOOSER
 EquipaVerde
 EquipaVerde
 "Gauleses" "Strumpfs" "Bananomans"
-2
+0
 
 CHOOSER
 205
