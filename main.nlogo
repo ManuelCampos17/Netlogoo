@@ -319,16 +319,24 @@ to vagueia-zig-zag-strumpfs ; turtle procedure
   rt random-float 60 - random-float 60
 end
 
-;; Comentarios longos para o Manel
-;; Tudo feito por Rodrigo Amaral, Colegio Moderno de 2004 a 2011 (do infatario ate 6 ano), Big brain, mas quem ee que usa netlogo para ensinar programacao????? onde esta python???, C++ with Arduino???, C## ????
 to vagueia-zig-zag-gauleses ; turtle procedure
-  ;; Pesquisa na grande lista dos patches in radius uma que seja vermelha, any? usado porque in-radius da uma lista [1, 4, 6, ...], em vez de um unico valor
-  let _rod_Patches (patches in-radius raio-visao with [ pcolor = red ])
-  let _rod_TargetPatch (min-one-of _rod_Patches [distance myself]);; da o menor
+  avanca
+  rt random-float 60 - random-float 60
+end
 
-  ifelse((is-patch? _rod_TargetPatch))
-    [face _rod_TargetPatch]
-    [set heading (heading + (10 - (random 40))) ]
+;; Comentarios longos para o Manel ;; ee = e com acento
+;; Tudo feito por Rodrigo Amaral, Colegio Moderno de 2004 a 2011 (do infatario ate 6 ano), Big brain, mas quem ee que usa netlogo para ensinar programacao????? onde esta python???, C++ with Arduino???, C## ????
+to vagueia-zig-zag-banonamas ; turtle procedure
+  ;; Pesquisa na grande lista dos patches in radius uma que seja vermelha, any? usado porque in-radius da uma lista [1, 4, 6, ...], em vez de um unico valor
+  let _rod_Patches (patches in-radius raio-visao with [pcolor = red]) ;; patches dentro do radio, quais sao vermelho, da-me uma lista caralho
+  let _rod_TargetPatch (min-one-of _rod_Patches [distance myself]);; dos patches da lista, qual o mais perto
+
+  if(ticks > 50)
+  [
+    ifelse((is-patch? _rod_TargetPatch))
+      [face _rod_TargetPatch]
+      [set heading (heading + (15 - (random 40)))]
+  ]
   fd 1
 end
 @#$#@#$#@
@@ -483,7 +491,7 @@ CHOOSER
 EquipaVerde
 EquipaVerde
 "Gauleses" "Strumpfs" "Bananomans"
-0
+2
 
 CHOOSER
 205
