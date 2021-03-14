@@ -8,8 +8,12 @@ globals
   cor-direita       ;; cor da equipa que joga da direita para a esquerda
   cor-chao          ;; cor do chao
 
+  _gau_glob_ShareTargetPatch ;; Quando Gaulese pode partilhar informacao com outro, usam estas variaveis
+  _gau_glob_ShareWhoIAm
+
   _rod_glob_ShareTargetPatch ;; Quando banonama pode partilhar informacao com outro, usam estas variaveis
   _rod_glob_ShareWhoIAm
+  _rod_glob_ShareMyDistance
 ]
 
 
@@ -45,7 +49,12 @@ strumpfs-own []
 
 ;; variaveis dos gauleses
 ;;
-gauleses-own []
+gauleses-own
+[
+  _gau_TargetPatch
+  _gau_RedPatchesInRadius
+  _gau_AgentsInRadius
+]
 
 ;; variaveis bananomas
 bananomans-own
@@ -53,6 +62,7 @@ bananomans-own
   _rod_TargetPatch
   _rod_RedPatchesInRadius
   _rod_AgentsInRadius
+  _rod_SetRandomHeading
 ]
 
 ;; -----------------------   Inicializacao das variaveis de cada equipa  ----------------------------
@@ -250,8 +260,10 @@ end
 to go ; turtle procedure
   ifelse (ticks > limite-tempo) or (pontos-verde + pontos-azul = num-baloes)
        [stop]
-       [ask turtles [executa]
-        tick]
+      [
+        ask turtles [executa]
+        tick
+      ]
 end
 
 
@@ -273,8 +285,13 @@ end
 
 to exec-bananomans
   ifelse sobre-balao?
-  [rebenta]
-  [vagueia-zig-zag-bananomans]
+  [
+    rebenta
+  ]
+  [
+    vagueia-zig-zag-bananomans
+  ]
+
 end
 ;; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ;; --------------------------  Funcoes auxiliares
@@ -329,48 +346,132 @@ to vagueia-zig-zag-strumpfs ; turtle procedure
   rt random-float 60 - random-float 60
 end
 
+
+
+
+
 to vagueia-zig-zag-gauleses ; turtle procedure
-  avanca
-  rt random-float 60 - random-float 60
-end
-
-;; Comentarios longos para o Manel ;; ee = e com acento
-;; Tudo feito por Rodrigo Amaral, Colegio Moderno de 2004 a 2011 (do infatario ate 6 ano), mas quem ee que usa netlogo para ensinar programacao????? onde esta python???, C++ with Arduino???, C## ????
-to vagueia-zig-zag-bananomans ; turtle procedure
-
   ;; Pesquisa na grande lista dos patches in radius uma que seja vermelha, any? usado porque in-radius da um agentset [1, 4, 6, ...], em vez de um unico valor
-  set _rod_RedPatchesInRadius (patches in-radius raio-visao with [pcolor = red]) ;; patches dentro do radio, quais sao vermelho, da-me um agentset
-  set _rod_TargetPatch (min-one-of _rod_RedPatchesInRadius [distance myself]) ;; dos patches do agentset, qual o mais perto
-  set _rod_AgentsInRadius (bananomans in-radius raio-visao with [self != myself]) ;; dame um agentset com todos os banonamas in radius
+  set _gau_RedPatchesInRadius (patches in-radius raio-visao with [pcolor = red]) ;; patches dentro do radio, quais sao vermelho, da-me um agentset
+  set _gau_TargetPatch (min-one-of _gau_RedPatchesInRadius [distance myself]) ;; dos patches do agentset, qual o mais perto
+  set _gau_AgentsInRadius (gauleses in-radius raio-visao with [self != myself]) ;; dame um agentset com todos os banonamas in radius
 
-  if (any? _rod_AgentsInRadius)
-  [
-    while [any? _rod_AgentsInRadius] ;; Verifica se existe algum banonama na visao, se existar da loop
+
+    while [any? _gau_AgentsInRadius] ;; Verifica se existe algum banonama na visao, se existar da loop
     [
-      ask (one-of _rod_AgentsInRadius) ;; Pergunta a um dos agents na visao, para partilhar sua TargetPatch, e quem ele ee
+      ask (one-of _gau_AgentsInRadius) ;; Pergunta a um dos agents na visao, para partilhar sua TargetPatch, e quem ele ee
       [
-        set _rod_glob_ShareTargetPatch _rod_TargetPatch
-        set _rod_glob_ShareWhoIAm self
+        set _gau_glob_ShareTargetPatch _gau_TargetPatch
+        set _gau_glob_ShareWhoIAm self
       ]
 
-      if (_rod_TargetPatch = _rod_glob_ShareTargetPatch) ;; Se a TargetPatch deste bananoman for igual aa target patch partlihada,
+      if (_gau_TargetPatch = _gau_glob_ShareTargetPatch) ;; Se a TargetPatch deste bananoman for igual aa target patch partlihada,
+      [
+        ;; Remove esse patch do Red Patches in radius agentset, e calcula novo Target Patch
+        set _gau_RedPatchesInRadius _gau_RedPatchesInRadius with [self != _gau_glob_ShareTargetPatch]
+        set _gau_TargetPatch (min-one-of _gau_RedPatchesInRadius [distance myself])
+      ]
+
+      set _gau_AgentsInRadius _gau_AgentsInRadius with [self != _gau_glob_ShareWhoIAm] ;; Remove esse agent from agentset
+    ]
+
+
+  ifelse((is-patch? _gau_TargetPatch))
+    [face _gau_TargetPatch]
+    [rt random-float 35 - random-float 35]
+
+  fd 1
+end
+
+
+
+
+
+
+
+
+
+
+
+to _rod_GGEZ
+  if(pontos-verde > (num-baloes / 2))
+  [
+    print "GG EZ, Better Luck next time scrub"
+  ]
+end
+
+to _rod_TargetPatchCheck
+  while [any? _rod_AgentsInRadius] ;; Verifica se existe algum banonama na visao, se existar daa loop
+  [
+    ask (one-of _rod_AgentsInRadius) ;; Pergunta a um dos agents na visao, para partilhar sua TargetPatch, e quem ele ee
+    [
+      set _rod_glob_ShareTargetPatch _rod_TargetPatch
+      set _rod_glob_ShareWhoIAm self
+    ]
+
+    if ((_rod_TargetPatch = _rod_glob_ShareTargetPatch) AND (is-agent? _rod_TargetPatch)) ;; Se a TargetPatch deste bananoman for igual aa target patch partilhada,
+    [
+      let _rod_MyDistance (distance _rod_TargetPatch)
+      ask (_rod_glob_ShareWhoIAm)
+      [
+        set _rod_glob_ShareMyDistance distance _rod_TargetPatch
+      ]
+
+      ifelse(_rod_MyDistance < _rod_glob_ShareMyDistance) ;; Se o bananoman tiver mais perto do target patch que o outro bananoman
+      [
+        ;; Diz ao outro bananoman para recalcular o target patch
+        ask (_rod_glob_ShareWhoIAm)
+        [
+          set _rod_RedPatchesInRadius _rod_RedPatchesInRadius with [self != _rod_glob_ShareTargetPatch]
+          set _rod_TargetPatch (min-one-of _rod_RedPatchesInRadius [distance myself])
+
+          _rod_TargetPatchCheck
+          _rod_Heading
+        ]
+      ]
       [
         ;; Remove esse patch do Red Patches in radius agentset, e calcula novo Target Patch
         set _rod_RedPatchesInRadius _rod_RedPatchesInRadius with [self != _rod_glob_ShareTargetPatch]
         set _rod_TargetPatch (min-one-of _rod_RedPatchesInRadius [distance myself])
       ]
-
-      set _rod_AgentsInRadius _rod_AgentsInRadius with [self != _rod_glob_ShareWhoIAm] ;; Remove esse agent from agentset
     ]
+
+    set _rod_AgentsInRadius _rod_AgentsInRadius with [self != _rod_glob_ShareWhoIAm] ;; Remove esse agent from agentset
   ]
-
-  ifelse((is-patch? _rod_TargetPatch))
-    [face _rod_TargetPatch]
-    [set heading (heading + (15 - (random 40)))]
-
-  fd 1
 end
 
+to _rod_Heading
+  ifelse((is-patch? _rod_TargetPatch))
+  [
+    face _rod_TargetPatch
+    if(_rod_SetRandomHeading = 0)
+    [
+      set _rod_SetRandomHeading 1
+    ]
+  ]
+  [
+    if(_rod_SetRandomHeading = 1)
+    [
+      set heading random 360
+      set _rod_SetRandomHeading 0
+    ]
+  ]
+end
+
+;; Comentarios longos para o Manel ;; ee = e com acento
+;; Tudo feito por Rodrigo Amaral, Colegio Moderno de 2004 a 2011 (do infatario ate 6 ano), mas quem ee que usa netlogo para ensinar programacao????? onde esta python???, C++ with Arduino???, C## ????
+to vagueia-zig-zag-bananomans ;; Winner Procedure
+  set _rod_RedPatchesInRadius (patches in-radius raio-visao with [pcolor = red]) ;; patches dentro do radio, quais sao vermelho, da-me um agentset
+  set _rod_TargetPatch (min-one-of _rod_RedPatchesInRadius [distance myself]) ;; dos patches do agentset, qual o mais perto
+  set _rod_AgentsInRadius (bananomans in-radius raio-visao with [self != myself]) ;; dame um agentset com todos os banonamas in radius
+
+  _rod_TargetPatchCheck
+  _rod_Heading
+
+  fd 1
+  ;;_rod_GGEZ
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 389
@@ -408,7 +509,7 @@ jogadores
 jogadores
 0
 100
-1.0
+56.0
 1
 1
 NIL
