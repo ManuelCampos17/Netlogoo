@@ -1,11 +1,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-globals [
+globals
+[
   pontos-verde   ;; score da equipa que joga da esquerda para a direita
   pontos-azul    ;; score da equipa que joga da direita para a esquerda
   cor-esquerda      ;; cor da equipa que joga da esquerda para a direita
   cor-direita       ;; cor da equipa que joga da direita para a esquerda
   cor-chao          ;; cor do chao
+
+  _rod_glob_ShareTargetPatch ;; Quando banonama pode partilhar informacao com outro, usam estas variaveis
+  _rod_glob_ShareWhoIAm
 ]
 
 
@@ -43,7 +47,13 @@ strumpfs-own []
 ;;
 gauleses-own []
 
-bananomans-own []
+;; variaveis bananomas
+bananomans-own
+[
+  _rod_TargetPatch
+  _rod_RedPatchesInRadius
+  _rod_AgentsInRadius
+]
 
 ;; -----------------------   Inicializacao das variaveis de cada equipa  ----------------------------
 ;;
@@ -264,7 +274,7 @@ end
 to exec-bananomans
   ifelse sobre-balao?
   [rebenta]
-  [vagueia-zig-zag-strumpfs]
+  [vagueia-zig-zag-bananomans]
 end
 ;; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ;; --------------------------  Funcoes auxiliares
@@ -325,20 +335,43 @@ to vagueia-zig-zag-gauleses ; turtle procedure
 end
 
 ;; Comentarios longos para o Manel ;; ee = e com acento
-;; Tudo feito por Rodrigo Amaral, Colegio Moderno de 2004 a 2011 (do infatario ate 6 ano), Big brain, mas quem ee que usa netlogo para ensinar programacao????? onde esta python???, C++ with Arduino???, C## ????
-to vagueia-zig-zag-banonamas ; turtle procedure
-  ;; Pesquisa na grande lista dos patches in radius uma que seja vermelha, any? usado porque in-radius da uma lista [1, 4, 6, ...], em vez de um unico valor
-  let _rod_Patches (patches in-radius raio-visao with [pcolor = red]) ;; patches dentro do radio, quais sao vermelho, da-me uma lista caralho
-  let _rod_TargetPatch (min-one-of _rod_Patches [distance myself]);; dos patches da lista, qual o mais perto
+;; Tudo feito por Rodrigo Amaral, Colegio Moderno de 2004 a 2011 (do infatario ate 6 ano), mas quem ee que usa netlogo para ensinar programacao????? onde esta python???, C++ with Arduino???, C## ????
+to vagueia-zig-zag-bananomans ; turtle procedure
 
-  if(ticks > 50)
+  ;; Pesquisa na grande lista dos patches in radius uma que seja vermelha, any? usado porque in-radius da um agentset [1, 4, 6, ...], em vez de um unico valor
+  set _rod_RedPatchesInRadius (patches in-radius raio-visao with [pcolor = red]) ;; patches dentro do radio, quais sao vermelho, da-me um agentset
+  set _rod_TargetPatch (min-one-of _rod_RedPatchesInRadius [distance myself]) ;; dos patches do agentset, qual o mais perto
+  set _rod_AgentsInRadius (bananomans in-radius raio-visao) ;; dame um agentset com todos os banonamas in radius
+
+  if (any? _rod_AgentsInRadius)
   [
-    ifelse((is-patch? _rod_TargetPatch))
-      [face _rod_TargetPatch]
-      [set heading (heading + (15 - (random 40)))]
+    while [any? _rod_AgentsInRadius] ;; Verifica se existe algum banonama na visao, se existar da loop
+    [
+      ask (one-of _rod_AgentsInRadius) ;; Pergunta a um dos agents na visao, para partilhar sua TargetPatch, e quem ele ee
+      [
+        set _rod_glob_ShareTargetPatch _rod_TargetPatch
+        set _rod_glob_ShareWhoIAm self
+      ]
+
+      if (_rod_TargetPatch = _rod_glob_ShareTargetPatch) ;; Se a TargetPatch deste bananoman for igual aa target patch partlihada,
+      [
+        ;; Remove esse patch do Red Patches in radius agentset, e calcula novo Target Patch
+        set _rod_RedPatchesInRadius _rod_RedPatchesInRadius with [self != _rod_glob_ShareTargetPatch]
+        set _rod_TargetPatch (min-one-of _rod_RedPatchesInRadius [distance myself])
+      ]
+
+      set _rod_AgentsInRadius _rod_AgentsInRadius with [self != _rod_glob_ShareWhoIAm] ;; Remove esse agent from agentset
+    ]
   ]
+
+  ifelse((is-patch? _rod_TargetPatch))
+    [face _rod_TargetPatch]
+    [set heading (heading + (15 - (random 40)))]
+
   fd 1
 end
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 389
@@ -376,7 +409,7 @@ jogadores
 jogadores
 0
 100
-57.0
+1.0
 1
 1
 NIL
