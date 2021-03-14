@@ -341,7 +341,7 @@ to vagueia-zig-zag-bananomans ; turtle procedure
   ;; Pesquisa na grande lista dos patches in radius uma que seja vermelha, any? usado porque in-radius da um agentset [1, 4, 6, ...], em vez de um unico valor
   set _rod_RedPatchesInRadius (patches in-radius raio-visao with [pcolor = red]) ;; patches dentro do radio, quais sao vermelho, da-me um agentset
   set _rod_TargetPatch (min-one-of _rod_RedPatchesInRadius [distance myself]) ;; dos patches do agentset, qual o mais perto
-  set _rod_AgentsInRadius (bananomans in-radius raio-visao with [self != myself]) ;; dame um agentset com todos os banonamas in radius
+  set _rod_AgentsInRadius (bananomans in-radius raio-visao with [) ;; dame um agentset com todos os banonamas in radius
 
   if (any? _rod_AgentsInRadius)
   [
