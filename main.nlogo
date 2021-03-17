@@ -14,6 +14,8 @@ globals
   _rod_glob_ShareTargetPatch ;; Quando banonama pode partilhar informacao com outro, usam estas variaveis
   _rod_glob_ShareWhoIAm
   _rod_glob_ShareMyDistance
+  _rod_glob_ShareAgentsInRadius
+  _rod_glob_ShareRedPatchesInNetwork
 ]
 
 
@@ -51,17 +53,18 @@ strumpfs-own []
 ;;
 gauleses-own
 [
-  _gau_TargetPatch
-  _gau_RedPatchesInRadius
-  _gau_AgentsInRadius
+  _rod_TargetPatch
+  _rod_RedPatchesInRadius
+  _rod_AgentsInRadius
+  _rod_SetRandomHeading
 ]
 
 ;; variaveis bananomas
 bananomans-own
 [
   _rod_TargetPatch
-  _rod_RedPatchesInRadius
-  _rod_AgentsInRadius
+  _rod_RedPatchesInNetwork
+  _rod_AgentsInNetwork
   _rod_SetRandomHeading
 ]
 
@@ -349,58 +352,9 @@ end
 
 
 
+;; ************** PREVIOUS IMPLEMENTATION OF ALGORITHM ******************
 
-to vagueia-zig-zag-gauleses ; turtle procedure
-  ;; Pesquisa na grande lista dos patches in radius uma que seja vermelha, any? usado porque in-radius da um agentset [1, 4, 6, ...], em vez de um unico valor
-  set _gau_RedPatchesInRadius (patches in-radius raio-visao with [pcolor = red]) ;; patches dentro do radio, quais sao vermelho, da-me um agentset
-  set _gau_TargetPatch (min-one-of _gau_RedPatchesInRadius [distance myself]) ;; dos patches do agentset, qual o mais perto
-  set _gau_AgentsInRadius (gauleses in-radius raio-visao with [self != myself]) ;; dame um agentset com todos os banonamas in radius
-
-
-    while [any? _gau_AgentsInRadius] ;; Verifica se existe algum banonama na visao, se existar da loop
-    [
-      ask (one-of _gau_AgentsInRadius) ;; Pergunta a um dos agents na visao, para partilhar sua TargetPatch, e quem ele ee
-      [
-        set _gau_glob_ShareTargetPatch _gau_TargetPatch
-        set _gau_glob_ShareWhoIAm self
-      ]
-
-      if (_gau_TargetPatch = _gau_glob_ShareTargetPatch) ;; Se a TargetPatch deste bananoman for igual aa target patch partlihada,
-      [
-        ;; Remove esse patch do Red Patches in radius agentset, e calcula novo Target Patch
-        set _gau_RedPatchesInRadius _gau_RedPatchesInRadius with [self != _gau_glob_ShareTargetPatch]
-        set _gau_TargetPatch (min-one-of _gau_RedPatchesInRadius [distance myself])
-      ]
-
-      set _gau_AgentsInRadius _gau_AgentsInRadius with [self != _gau_glob_ShareWhoIAm] ;; Remove esse agent from agentset
-    ]
-
-
-  ifelse((is-patch? _gau_TargetPatch))
-    [face _gau_TargetPatch]
-    [rt random-float 35 - random-float 35]
-
-  fd 1
-end
-
-
-
-
-
-
-
-
-
-
-
-to _rod_GGEZ
-  if(pontos-verde > (num-baloes / 2))
-  [
-    print "GG EZ, Better Luck next time scrub"
-  ]
-end
-
-to _rod_TargetPatchCheck
+to _gau_TargetPatchCheck
   while [any? _rod_AgentsInRadius] ;; Verifica se existe algum banonama na visao, se existar daa loop
   [
     ask (one-of _rod_AgentsInRadius) ;; Pergunta a um dos agents na visao, para partilhar sua TargetPatch, e quem ele ee
@@ -440,6 +394,218 @@ to _rod_TargetPatchCheck
   ]
 end
 
+to _gau_Heading
+  ifelse((is-patch? _rod_TargetPatch))
+  [
+    face _rod_TargetPatch
+    if(_rod_SetRandomHeading = 0)
+    [
+      set _rod_SetRandomHeading 1
+    ]
+  ]
+  [
+    if(_rod_SetRandomHeading = 1)
+    [
+      set heading random 360
+      set _rod_SetRandomHeading 0
+    ]
+  ]
+end
+
+
+
+
+to vagueia-zig-zag-gauleses ; turtle procedure
+  set _rod_RedPatchesInRadius (patches in-radius raio-visao with [pcolor = red]) ;; patches dentro do radio, quais sao vermelho, da-me um agentset
+  set _rod_TargetPatch (min-one-of _rod_RedPatchesInRadius [distance myself]) ;; dos patches do agentset, qual o mais perto
+  set _rod_AgentsInRadius (gauleses in-radius raio-visao with [self != myself]) ;; dame um agentset com todos os banonamas in radius
+
+  _gau_TargetPatchCheck
+  _gau_Heading
+
+  fd 1
+end
+
+
+
+;; ************** END OF PREVIOUS IMPLEMENTATION OF ALGORITHM ******************
+
+
+
+;; Devolve o Agentset, como uma lista
+to-report _rod_AgentsetToList[Agentset]
+  let myList (list)
+
+  if (any? Agentset)
+  [
+    while [any? Agentset]
+    [
+      set myList (fput (one-of Agentset) myList)
+      set _rod_glob_ShareWhoIAm (first myList)
+      set Agentset (Agentset with [self != _rod_glob_ShareWhoIAm])
+    ]
+  ]
+  report myList
+end
+
+
+;; Esta procedure devolve uma lista com todos os agentes dentro de uma network, reporter ee o agente
+to-report _rod_CheckAgentsInNetwork [_rod_AgentsInNet]
+
+  ;; If empty, ignore
+  if (empty? _rod_AgentsInNet)
+  [
+    report _rod_AgentsInNet
+  ]
+
+  let _rod_Continue 1 ;; Usado para manter o while loop a correr
+  let _rod_ListSize 0 ;; Usado para saber o tamanho anterior da lista gos AgentsInNetwork
+  let _rod_OtherAgents (list) ;; Usado para armazenar os agentes que vao ser adicionados aa AgentsInNetwork, no final do loop
+
+  while [_rod_Continue != 0]
+  [
+    set _rod_ListSize length _rod_AgentsInNet
+    let _rod_Count 0 ;; Usado para contar quantos membros da AgentsInNetwork ja processamos
+
+    while [_rod_ListSize > _rod_Count]
+    [
+       ask (item _rod_Count _rod_AgentsInNet)
+       [
+         set _rod_glob_ShareAgentsInRadius ( _rod_AgentsetToList (bananomans in-radius raio-visao with [self != myself]) )
+       ]
+
+       set _rod_OtherAgents (sentence _rod_OtherAgents _rod_glob_ShareAgentsInRadius)
+       set _rod_OtherAgents remove-duplicates _rod_OtherAgents
+
+       set _rod_Count (_rod_Count + 1)
+    ]
+
+     set _rod_AgentsInNet (sentence _rod_AgentsInNet _rod_OtherAgents)
+     set _rod_AgentsInNet remove-duplicates _rod_AgentsInNet
+
+    if((length _rod_AgentsInNet) = _rod_ListSize)
+    [
+      set _rod_Continue 0
+    ]
+  ]
+
+  report _rod_AgentsInNet
+
+end
+
+to-report _rod_CheckRedPatchesInAgentsNetwork [_rod_AgentsNet]
+  set _rod_glob_ShareRedPatchesInNetwork (list)
+  let _rod_ListSize length _rod_AgentsNet
+  let _rod_Count 0 ;; Usado para contar quantos membros da AgentsNet ja processamos
+
+  while [_rod_ListSize > _rod_Count]
+  [ 
+    ask (item _rod_Count _rod_AgentsNet)
+    [
+      let _rod_PatchesInRadius _rod_AgentsetToList (patches in-radius raio-visao with [pcolor = red])
+      set _rod_glob_ShareRedPatchesInNetwork ( sentence _rod_glob_ShareRedPatchesInNetwork _rod_PatchesInRadius )
+    ]
+
+    set _rod_Count (_rod_Count + 1)
+  ]
+
+  set _rod_glob_ShareRedPatchesInNetwork ( remove-duplicates _rod_glob_ShareRedPatchesInNetwork )
+
+  report _rod_glob_ShareRedPatchesInNetwork
+end
+
+to-report _rod_CheckMinimalDistance [_rod_PatchList]
+  if (empty? _rod_PatchList)
+  [
+    report nobody
+  ]
+
+
+  set _rod_glob_ShareMyDistance 999
+  let _rod_ListSize length _rod_PatchList
+  let _rod_Count 0 ;; Usado para contar quantos membros do PatchList ja processamos
+
+  while [_rod_count < _rod_ListSize]
+  [
+    ask (item _rod_Count _rod_PatchList)
+    [
+      let _rod_MyDistance (distance _rod_glob_ShareWhoIAm)
+
+      if (_rod_MyDistance < _rod_glob_ShareMyDistance)
+      [
+        set _rod_glob_ShareMyDistance _rod_MyDistance
+        set _rod_glob_ShareTargetPatch self
+      ]
+    ]
+
+    set _rod_Count (_rod_Count + 1)
+  ]
+
+  ;show _rod_glob_ShareTargetPatch
+  report _rod_glob_ShareTargetPatch
+end
+
+
+
+to _rod_GGEZ
+  if(pontos-verde > (num-baloes / 2))
+  [
+    print "GG EZ, Better Luck next time scrub"
+  ]
+end
+
+to _rod_TargetPatchCheck
+  let _rod_ListSize length _rod_AgentsInNetwork
+  let _rod_Count 0 ;; Usado para contar quantos membros do AgentsInNetwork ja processamos
+
+  while [ _rod_Count < _rod_ListSize ] ;; Verifica todas os agentes na list
+  [
+    ask (item _rod_Count _rod_AgentsInNetwork) ;; Pergunta a um dos agents na visao, para partilhar sua TargetPatch, e quem ele ee
+    [
+      set _rod_glob_ShareTargetPatch _rod_TargetPatch
+      set _rod_glob_ShareWhoIAm self
+    ]
+
+    if ((_rod_TargetPatch = _rod_glob_ShareTargetPatch) AND (is-agent? _rod_TargetPatch)) ;; Se a TargetPatch deste bananoman for igual aa target patch partilhada,
+    [
+      let _rod_MyDistance (distance _rod_TargetPatch)
+      ask (_rod_glob_ShareWhoIAm)
+      [
+        set _rod_glob_ShareMyDistance distance _rod_TargetPatch
+      ]
+
+      ifelse (_rod_MyDistance < _rod_glob_ShareMyDistance) ;; Se o bananoman tiver mais perto do target patch que o outro bananoman
+      [
+        ;; Diz ao outro bananoman para recalcular o target patch
+        ask (_rod_glob_ShareWhoIAm)
+        [
+          set _rod_AgentsInNetwork ( _rod_AgentsetToList (bananomans in-radius raio-visao with [self != myself]) )
+          set _rod_AgentsInNetwork ( _rod_CheckAgentsInNetwork _rod_AgentsInNetwork )
+          set _rod_RedPatchesInNetwork ( _rod_CheckRedPatchesInAgentsNetwork _rod_AgentsInNetwork )
+
+          set _rod_glob_ShareWhoIAm self
+          set _rod_TargetPatch (_rod_CheckMinimalDistance _rod_RedPatchesInNetwork) ;; dos patches do agentset, qual o mais perto
+          _rod_TargetPatchCheck
+
+           _rod_Heading
+        ]
+      ]
+      [
+        ;; Remove esse patch do Red Patches in Network agentset, e calcula novo Target Patch
+
+        if (is-agent? _rod_TargetPatch)
+        [
+          set _rod_RedPatchesInNetwork (remove _rod_glob_ShareTargetPatch _rod_RedPatchesInNetwork)
+        ]
+
+        set _rod_TargetPatch (_rod_CheckMinimalDistance _rod_RedPatchesInNetwork)
+      ]
+    ]
+
+    set _rod_Count (_rod_Count + 1)
+  ]
+end
+
 to _rod_Heading
   ifelse((is-patch? _rod_TargetPatch))
   [
@@ -461,11 +627,18 @@ end
 ;; Comentarios longos para o Manel ;; ee = e com acento
 ;; Tudo feito por Rodrigo Amaral, Colegio Moderno de 2004 a 2011 (do infatario ate 6 ano), mas quem ee que usa netlogo para ensinar programacao????? onde esta python???, C++ with Arduino???, C## ????
 to vagueia-zig-zag-bananomans ;; Winner Procedure
-  set _rod_RedPatchesInRadius (patches in-radius raio-visao with [pcolor = red]) ;; patches dentro do radio, quais sao vermelho, da-me um agentset
-  set _rod_TargetPatch (min-one-of _rod_RedPatchesInRadius [distance myself]) ;; dos patches do agentset, qual o mais perto
-  set _rod_AgentsInRadius (bananomans in-radius raio-visao with [self != myself]) ;; dame um agentset com todos os banonamas in radius
+
+  set _rod_AgentsInNetwork ( _rod_AgentsetToList (bananomans in-radius raio-visao with [self != myself]) )
+  set _rod_AgentsInNetwork ( _rod_CheckAgentsInNetwork _rod_AgentsInNetwork )
+  set _rod_RedPatchesInNetwork ( _rod_CheckRedPatchesInAgentsNetwork _rod_AgentsInNetwork )
+
+  set _rod_glob_ShareWhoIAm self
+  set _rod_TargetPatch (_rod_CheckMinimalDistance _rod_RedPatchesInNetwork) ;; dos patches do agentset, qual o mais perto
 
   _rod_TargetPatchCheck
+
+  ;show _rod_TargetPatch
+
   _rod_Heading
 
   fd 1
